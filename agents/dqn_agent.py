@@ -11,6 +11,10 @@ Architecture (Section VII-A):
 Hyperparameters (Table I):
   epsilon = 0.1, minibatch size = 32, optimizer = Adam,
   learning rate = 1e-4, experience replay size = 1,000,000, gamma = 0.9
+
+Target network: the frozen target network theta^- from Mnih et al. (2013),
+which the paper cites as [5] for its DQN. Synced from the online network
+every `target_update_every` gradient steps.
 """
 
 import random
@@ -64,12 +68,13 @@ class DQNAgent:
         self,
         state_dim: int,
         action_dim: int,
-        hidden_size: int = 200,       # Table I (via Section VII-A architecture)
-        lr: float = 1e-4,             # Table I
-        gamma: float = 0.9,           # Table I
-        epsilon: float = 0.1,         # Table I
-        buffer_size: int = 1_000_000, # Table I
-        batch_size: int = 32,         # Table I
+        hidden_size: int = 200,        # Section VII-A architecture
+        lr: float = 1e-4,              # Table I
+        gamma: float = 0.9,            # Table I
+        epsilon: float = 0.1,          # Table I
+        buffer_size: int = 1_000_000,  # Table I
+        batch_size: int = 32,          # Table I
+        target_update_every: int = 500,
         seed: int = 0,
     ):
         torch.manual_seed(seed)
@@ -79,9 +84,16 @@ class DQNAgent:
         self.batch_size = batch_size
 
         self.q_network = QNetwork(state_dim, action_dim, hidden_size)
-        self.optimizer = optim.Adam(self.q_network.parameters(), lr=lr)  # Table I: Adam
-        self.replay_buffer = ReplayBuffer(buffer_size, seed=seed)
+        self.optimizer = optim.Adam(self.q_network.parameters(), lr=lr)
 
+        # Frozen target network theta^- (Mnih et al. 2013).
+        self.target_network = QNetwork(state_dim, action_dim, hidden_size)
+        self.target_network.load_state_dict(self.q_network.state_dict())
+        self.target_network.eval()
+        self.target_update_every = target_update_every
+        self._train_steps = 0
+
+        self.replay_buffer = ReplayBuffer(buffer_size, seed=seed)
         self.rng = np.random.RandomState(seed)
 
     def select_action(self, state: np.ndarray) -> int:
@@ -109,10 +121,10 @@ class DQNAgent:
         rewards_t = torch.from_numpy(rewards)
         next_states_t = torch.from_numpy(next_states)
 
-        # y = r + gamma * max_a' Q(x', a'; theta) -- no separate target
-        # network, per the algorithm note above.
+        # y = r + gamma * max_a' Q(x', a'; theta^-), using the frozen
+        # target network theta^- (Mnih et al. 2013).
         with torch.no_grad():
-            next_q = self.q_network(next_states_t)
+            next_q = self.target_network(next_states_t)
             max_next_q = next_q.max(dim=1)[0]
             targets = rewards_t + self.gamma * max_next_q
 
@@ -124,6 +136,11 @@ class DQNAgent:
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+
+        # Sync target network periodically.
+        self._train_steps += 1
+        if self._train_steps % self.target_update_every == 0:
+            self.target_network.load_state_dict(self.q_network.state_dict())
 
         return loss.item()
 
@@ -152,15 +169,21 @@ if __name__ == "__main__":
         running_reward += reward
 
         if t % LOG_EVERY == 0:
-            print(f"step {t:6d}  avg reward (last {LOG_EVERY}): {running_reward / LOG_EVERY:.3f}")
+            print(f"step {t:6d}  avg reward (last {LOG_EVERY}): "
+                  f"{running_reward / LOG_EVERY:+.3f}")
             running_reward = 0.0
 
-    # Evaluate greedily (epsilon effectively 0 -- force greedy action selection)
+    # Greedy evaluation.
+    saved_eps = agent.epsilon
     agent.epsilon = 0.0
     eval_reward = 0.0
     for _ in range(EVAL_STEPS):
         action = agent.select_action(state)
         state, reward, _, _ = env.step(action)
         eval_reward += reward
-    print(f"\nEval avg reward over {EVAL_STEPS} steps (greedy): {eval_reward / EVAL_STEPS:.3f}")
-    print("Compare to Optimal Policy (~0.791 at p=0.9, see policies/optimal_policy.py)")
+    agent.epsilon = saved_eps
+
+    print(f"\nEval avg reward over {EVAL_STEPS} steps (greedy): "
+          f"{eval_reward / EVAL_STEPS:+.3f}")
+    print("Compare to optimal policy at p=0.9: +0.791 per step "
+          "(see policies/optimal_policy.py)")
