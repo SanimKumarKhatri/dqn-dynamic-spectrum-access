@@ -36,7 +36,7 @@ P_VALUES = [0.75, 0.80, 0.85, 0.90, 0.95]
 N_CHANNELS = 16
 GAMMA = 0.9
 
-N_EPISODES = 100
+N_EPISODES = 400
 EPISODE_LENGTH = 1000
 
 BURN_IN = 200           # steps run unscored before measuring
@@ -44,10 +44,12 @@ SCORE_STEPS = 1000      # steps over which discounted return is computed
 
 SEEDS = [0, 1, 2]
 
+N_EVAL_TRAJECTORIES = 10    # for every policy, incl. DQN's greedy eval
+
 MLE_HORIZON = 10_000        # paper Section VII-B
 
-RESULTS_JSON = "results/exp1_round_robin.json"
-FIGURE_PATH = "results/figures/exp1_round_robin.png"
+RESULTS_JSON = "results/exp1_round_robin_1.json"
+FIGURE_PATH = "results/figures/exp1_round_robin_1.png"
 
 # Helpers -------------------------------------------#
 
@@ -68,81 +70,102 @@ def eval_dqn(agent, p, seed_offset, burn_in=BURN_IN, score_steps=SCORE_STEPS):
     saved_eps = agent.epsilon
     agent.epsilon = 0.0
 
-    env = make_env(p, seed=seed_offset)
-    state = env.reset()
-    for _ in range(burn_in):
-        action = agent.select_action(state)
-        state, _, _, _ = env.step(action)
+    returns = []
+    for k in range(N_EVAL_TRAJECTORIES):
+        env = make_env(p, seed=seed_offset + k)
+        state = env.reset()
+        for _ in range(burn_in):
+            action = agent.select_action(state)
+            state, _, _, _ = env.step(action)
 
-    rewards = []
-    for _ in range(score_steps):
-        action = agent.select_action(state)
-        state, reward, _, _ = env.step(action)
-        rewards.append(reward)
+        rewards = []
+        for _ in range(score_steps):
+            action = agent.select_action(state)
+            state, reward, _, _ = env.step(action)
+            rewards.append(reward)
+        returns.append(discounted_return(rewards, GAMMA))
 
     agent.epsilon = saved_eps
-    return discounted_return(rewards, GAMMA)
+    return np.array(returns)
 
 
 def eval_optimal(p, seed_offset, score_steps=SCORE_STEPS):
     """Theorem 1 policy with genie initialization (initial channel known)."""
-    env = make_env(p, seed=seed_offset)
-    env.reset()
-    policy = OptimalPolicy(n_channels=N_CHANNELS, p=p)
-    policy.reset(env.good_channel)   # genie: matches Theorem 1's assumption
+    returns = []
 
-    rewards = []
-    for _ in range(score_steps):
-        action = policy.select_action()
-        _, reward, _, _ = env.step(action)
-        policy.update(reward)
-        rewards.append(reward)
-    return discounted_return(rewards, GAMMA)
+    for k in range(N_EVAL_TRAJECTORIES):
+        env = make_env(p, seed=seed_offset + k)
+        env.reset()
+        policy = OptimalPolicy(n_channels=N_CHANNELS, p=p)
+        policy.reset(env.good_channel)   # genie: matches Theorem 1's assumption
 
+        for _ in range(BURN_IN):
+            action = policy.select_action()
+            _, reward, _, _ = env.step(action)
+            policy.update(reward)
+        rewards = []
+        for _ in range(score_steps):
+            action = policy.select_action()
+            _, reward, _, _ = env.step(action)
+            policy.update(reward)
+            rewards.append(reward)
+        returns.append(discounted_return(rewards, GAMMA))
+    return np.array(returns)
 
 def eval_whittle(p, fit_seed, eval_seed, burn_in=BURN_IN,
                  score_steps=SCORE_STEPS):
     fit_env = make_env(p, seed=fit_seed)
     fit_env.reset()
-    policy = WhittleIndexPolicy(n_channels=N_CHANNELS, seed=fit_seed)
-    policy.fit(fit_env, mle_horizon=MLE_HORIZON)
+    fitted = WhittleIndexPolicy(n_channels=N_CHANNELS, seed=fit_seed)
+    fitted.fit(fit_env, mle_horizon=MLE_HORIZON)
 
-    env = make_env(p, seed=eval_seed)
-    env.reset()
-    policy.last_state[:] = 0
-    policy.tau[:] = MLE_HORIZON
+    returns = []
 
-    for _ in range(burn_in):
-        action = policy.select_action()
-        _, _, _, _ = env.step(action)
-        policy.update(action, 0.0)  # dummy update to advance tau
-    # reset tracking after burn-in
-    policy.last_state[:] = 0
-    policy.tau[:] = MLE_HORIZON
+    for k in range(N_EVAL_TRAJECTORIES):
+        policy = WhittleIndexPolicy(n_channels=N_CHANNELS, seed=eval_seed + k)
+        policy.p01 = fitted.p01.copy()
+        policy.p11 = fitted.p11.copy()
+        policy.pi1 = fitted.pi1.copy()
+        policy.lam = fitted.lam.copy()
+        policy.last_state[:] = 0
+        policy.tau[:] = MLE_HORIZON
 
-    rewards = []
-    for _ in range(score_steps):
-        action = policy.select_action()
-        _, reward, _, _ = env.step(action)
-        policy.update(action, reward)
-        rewards.append(reward)
-    return discounted_return(rewards, GAMMA)
+        env = make_env(p, seed=eval_seed + k)
+        env.reset()
+        for _ in range(burn_in):
+            action = policy.select_action()
+            _, _, _, _ = env.step(action)
+            policy.update(action, 0.0)  # dummy update to advance tau
+        # reset tracking after burn-in
+        policy.last_state[:] = 0
+        policy.tau[:] = MLE_HORIZON
 
+        rewards = []
+        for _ in range(score_steps):
+            action = policy.select_action()
+            _, reward, _, _ = env.step(action)
+            policy.update(action, reward)
+            rewards.append(reward)
+        returns.append(discounted_return(rewards, GAMMA))
+    return np.array(returns)
 
 def eval_random(p, seed_offset, burn_in=BURN_IN, score_steps=SCORE_STEPS):
-    env = make_env(p, seed=seed_offset)
-    env.reset()
-    rng = np.random.RandomState(seed_offset)
-    for _ in range(burn_in):
-        action = int(rng.randint(N_CHANNELS))
-        _, _, _, _ = env.step(action)
+    returns = []
+    for k in range(N_EVAL_TRAJECTORIES):
+        env = make_env(p, seed=seed_offset + k)
+        env.reset()
+        rng = np.random.RandomState(seed_offset + k)
+        for _ in range(burn_in):
+            action = int(rng.randint(N_CHANNELS))
+            _, _, _, _ = env.step(action)
 
-    rewards = []
-    for _ in range(score_steps):
-        action = int(rng.randint(N_CHANNELS))
-        _, reward, _, _ = env.step(action)
-        rewards.append(reward)
-    return discounted_return(rewards, GAMMA)
+        rewards = []
+        for _ in range(score_steps):
+            action = int(rng.randint(N_CHANNELS))
+            _, reward, _, _ = env.step(action)
+            rewards.append(reward)
+        returns.append(discounted_return(rewards, GAMMA))
+    return np.array(returns)
 
 
 # DQN training ---------------------------------------------------- #
@@ -188,30 +211,30 @@ def main():
                   f"{N_EPISODES * EPISODE_LENGTH:,} steps)...")
             agent = train_dqn(p, seed)
             r = eval_dqn(agent, p, seed_offset=10_000 + 1000 * seed)
-            print(f"      eval discounted return: {r:+.3f}")
+            print(f"      eval discounted return: {r.mean():+.3f} ± {r.std():.3f}")
             dqn_returns.append(r)
         results[p]["dqn"] = [float(np.mean(dqn_returns)),
                              float(np.std(dqn_returns))]
 
         # Optimal ---
         r = eval_optimal(p, seed_offset=20_000)
-        results[p]["optimal"] = [float(r), 0.0]
+        results[p]["optimal"] = [float(r.mean()), float(r.std())]
 
         # Whittle Index heuristic ---
         r = eval_whittle(p, fit_seed=30_000, eval_seed=40_000)
-        results[p]["whittle"] = [float(r), 0.0]
+        results[p]["whittle"] = [float(r.mean()), float(r.std())]
 
         # Random ---
         r = eval_random(p, seed_offset=50_000)
-        results[p]["random"] = [float(r), 0.0]
+        results[p]["random"] = [float(r.mean()), float(r.std())]
 
         # per-p summary ---
         print(f"  Summary at p = {p:.2f}:")
-        for name, (m, _) in results[p].items():
-            print(f"      {name:8s}: {m:+.3f}")
+        for name, (m, s) in results[p].items():
+            print(f"      {name:8s}: {m:+.3f} ± {s:.3f}")
 
-    with open(RESULTS_JSON, "w") as f:
-        json.dump(results, f, indent=2)
+        with open(RESULTS_JSON, "w") as f:
+            json.dump(results, f, indent=2)
     print(f"\nSaved results to {RESULTS_JSON}")
 
     # plot (Fig. 4 reproduction) ----
@@ -219,16 +242,24 @@ def main():
     p_arr = np.array(P_VALUES)
 
     def series(name):
-        return np.array([results[p][name][0] for p in P_VALUES])
+        m = np.array([results[p][name][0] for p in P_VALUES])
+        s = np.array([results[p][name][1] for p in P_VALUES])
+        return m, s
 
-    ax.plot(p_arr, series("dqn"), marker="o", color="red", label="DQN")
-    ax.plot(p_arr, series("optimal"), marker="s", color="green",
-            label="Optimal policy (known dynamics)")
-    ax.plot(p_arr, series("whittle"), marker="^", color="blue",
-            label="Whittle index heuristic")
-    ax.plot(p_arr, series("random"), marker="x", color="gray",
-            label="Random")
+    dqn_m, dqn_s = series("dqn")
+    opt_m, opt_s = series("optimal")
+    wh_m, wh_s = series("whittle")
+    rand_m, rand_s = series("random")
 
+    ax.errorbar(p_arr, dqn_m, yerr=dqn_s, marker="o", color="red",
+                label="DQN", capsize=4)
+    ax.errorbar(p_arr, opt_m, yerr=opt_s, marker="s", color="green",
+                label="Optimal policy (known dynamics)", capsize=4)
+    ax.errorbar(p_arr, wh_m, yerr=wh_s, marker="^", color="blue",
+                label="Whittle index heuristic", capsize=4)
+    ax.errorbar(p_arr, rand_m, yerr=rand_s, marker="x", color="gray",
+                label="Random", capsize=4)
+    
     ax.set_xlabel("Probability that the following channel is good (p)")
     ax.set_ylabel("Average discounted reward")
     ax.set_title("Fig. 4 reproduction: single good channel, round robin")
