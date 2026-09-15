@@ -69,11 +69,18 @@ Three non-obvious issues surfaced during replication and materially affect the F
 ### Round-robin switching (reproduces Fig. 4)
 
 #### Initial run
+When the DQN was underperforming due to smaller training steps and episodes.
+
 ![first_run](results/figures/test_exp1_round_robin_test.png)
+
 #### Second run
+The result after increasing the training steps, but still not desireable output.
+
 ![second_run](results/figures/exp1_round_robin.png)
 
 #### Latest run with more training episodes 
+After increasing training steps to 400k steps, a desireable and paper similar result was obtained.
+
 ![latest_run](results/figures/exp1_round_robin_1.png)
 
 DQN tracks the shape of the Optimal policy across $p$, but does not fully close the gap, and the size of that gap shrinks as $p$ increases. Results (mean $\pm$ std, discounted return over $10$ eval trajectories $\times 3$ training seeds):
