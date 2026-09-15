@@ -95,8 +95,6 @@ DQN tracks the shape of the Optimal policy across $p$, but does not fully close 
 
 At the completed $p$ values, DQN reaches $85\%$ of Optimal's discounted return at $p=0.75$, rising to $99.37\%$ at $p=0.95$. The gap narrows as $p$ increases. The paper reports that DQN achieves the same optimal performance as the optimal policy across all $p$, the residual gap in this replication is its central discrepancy.
 
- <!-- and its cause is explored in the Discrepancies section below. -->
-
 Whittle Index sits close to Random across all $p$, and both sit far below DQN and Optimal. This is consistent with the paper's discussion of why an independent-channel heuristic cannot exploit the round-robin correlation.
 
 ## Running
