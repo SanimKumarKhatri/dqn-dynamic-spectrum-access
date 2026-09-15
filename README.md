@@ -1,6 +1,6 @@
 # Deep Reinforcement Learning for Dynamic Multichannel Access
 
-> A from-scratch replication of Wang, Liu, Gomes & Krishnamachari, __*"Deep Reinforcement Learning for Dynamic Multichannel Access in Wireless Networks"*__ (arXiv:[1802.06958](https://arxiv.org/abs/1802.06958)).
+A from-scratch replication of Wang, Liu, Gomes & Krishnamachari, __*"Deep Reinforcement Learning for Dynamic Multichannel Access in Wireless Networks"*__ (arXiv:[1802.06958](https://arxiv.org/abs/1802.06958)).
 [![DOI](https://img.shields.io/badge/DOI-10.1109/TCCN.2018.2809722-blue.svg)](https://doi.org/10.1109/TCCN.2018.2809722)
 
 ## Motivation
