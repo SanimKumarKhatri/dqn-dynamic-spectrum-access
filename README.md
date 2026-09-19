@@ -62,7 +62,7 @@ Four non-obvious issues surfaced during replication and materially affect the Fi
 
 3. **Equal evaluation protocol across policies.** DQN is averaged over $3$ training seeds $\times 10$ eval trajectories ($30$ samples); Optimal, Whittle, and Random are each averaged over $10$ eval trajectories. Earlier the DQN was reported with error bars but baselines were reported as single samples which produced misleading "DQN beats Optimal" readings.
 
-4. **Per-<span>$p$</span> training schedule.** The paper does not report how long the DQN was trained. Our first sweep used $200k$ steps per $p$ and plateaued at $\sim 85\\%$ of the optimal policy's reward at low $p$. A per-p convergence diagnostic (`experiments/check_convergence.py`) showed the DQN needs roughly an order of magnitude more training at low $p$ to converge: $~2M$ steps at $p=0.75$, $~500k–1.5M$ at mid $p$, and ~500k at $p \geq 0.90$. The schedule used for the final Fig. 4 sweep is:
+4. **Per-<span>$p$</span> training schedule.** The paper does not report how long the DQN was trained. Our first sweep used $200k$ steps per $p$ and plateaued at $\sim 85\\%$ of the optimal policy's reward at low $p$. A per-p convergence diagnostic (`experiments/check_convergence.py`) showed the DQN needs roughly an order of magnitude more training at low $p$ to converge: $~2M$ steps at $p=0.75$, $~500k-1.5M$ at mid $p$, and ~500k at $p \geq 0.90$. The schedule used for the final Fig. 4 sweep is:
 
 |$p$|training steps|
 |---|---|
@@ -136,7 +136,7 @@ Re-running the sweep with the per-<span>$p$</span> schedule from `Methodology no
 | 0.90 | $+7.848 \pm 0.971$ | $+8.735 \pm 0.867$| $-8.941 \pm 1.027$ | $-8.701 \pm 0.977$ |
 | 0.95 | $+9.214 \pm 0.670$ | $+9.168 \pm 0.711$ | $-9.078 \pm 0.892$ | $-8.304 \pm 0.980$ |
 
-DQN matches the optimal policy within statistical noise at both endpoints ($p=0.75$: gap $0.385$, $p=0.95$: DQN nominally *above* optimal by $0.046$, again within noise). A small residual gap of $\sim 0.9$ return units ($10-12$%) remains at mid $p$ ($0.80–0.90$, $\approx 2–3 \sigma$) and is the largest remaining quantitative deviation from the paper's claim that DQN matches optimal at every $p$. The convergence diagnostic and policy extraction above both attribute this to finite training rather than a policy failure.
+DQN matches the optimal policy within statistical noise at both endpoints ($p=0.75$: gap $0.385$, $p=0.95$: DQN nominally *above* optimal by $0.046$, again within noise). A small residual gap of $\sim 0.9$ return units ($10-12$%) remains at mid $p$ ($0.80-0.90$, $\approx 2-3 \sigma$) and is the largest remaining quantitative deviation from the paper's claim that DQN matches optimal at every $p$. The convergence diagnostic and policy extraction above both attribute this to finite training rather than a policy failure.
 
 Whittle Index sits close to Random across all $p$, and both sit far below DQN and Optimal. This is consistent with the paper's discussion of why an independent-channel heuristic cannot exploit the round-robin correlation.
 
@@ -161,4 +161,4 @@ python -m experiments.exp1_round_robin
 
 ## References
 
-- Wang, S., Liu, H., Gomes, P. H., & Krishnamachari, B. (2018). Deep reinforcement learning for dynamic multichannel access in Wireless Networks. IEEE Transactions on Cognitive Communications and Networking, 4(2), 257–265. https://doi.org/10.1109/tccn.2018.2809722 Also in (arXiv:[1802.06958](https://arxiv.org/abs/1802.06958)) 
+- Wang, S., Liu, H., Gomes, P. H., & Krishnamachari, B. (2018). Deep reinforcement learning for dynamic multichannel access in Wireless Networks. IEEE Transactions on Cognitive Communications and Networking, 4(2), 257-265. https://doi.org/10.1109/tccn.2018.2809722 Also in (arXiv:[1802.06958](https://arxiv.org/abs/1802.06958)) 
