@@ -36,20 +36,24 @@ P_VALUES = [0.75, 0.80, 0.85, 0.90, 0.95]
 N_CHANNELS = 16
 GAMMA = 0.9
 
-N_EPISODES = 400
 EPISODE_LENGTH = 1000
 
 BURN_IN = 200           # steps run unscored before measuring
 SCORE_STEPS = 1000      # steps over which discounted return is computed
+#STEPS_PER_P = {0.75: 2_000_000, 0.80: 1_200_000, 0.85: 1_000_000,
+#               0.90: 700_000, 0.95: 500_000}
 
-SEEDS = [0, 1, 2]
+STEPS_PER_P = {0.75: 2_100_000, 0.80: 2_000_000, 0.85: 1_800_000,
+               0.90: 1_500_000, 0.95: 600_000}
+
+SEEDS = [0] #[0, 1, 2]
 
 N_EVAL_TRAJECTORIES = 10    # for every policy, incl. DQN's greedy eval
 
 MLE_HORIZON = 10_000        # paper Section VII-B
 
-RESULTS_JSON = "results/exp1_round_robin_1.json"
-FIGURE_PATH = "results/figures/exp1_round_robin_1.png"
+RESULTS_JSON = "results/exp1_round_robin_3.json"
+FIGURE_PATH = "results/figures/exp1_round_robin_3.png"
 
 # Helpers -------------------------------------------#
 
@@ -170,8 +174,13 @@ def eval_random(p, seed_offset, burn_in=BURN_IN, score_steps=SCORE_STEPS):
 
 # DQN training ---------------------------------------------------- #
 
-def train_dqn(p, seed, n_episodes=N_EPISODES, episode_length=EPISODE_LENGTH,
+def train_dqn(p, seed, episode_length=EPISODE_LENGTH,
               verbose=True):
+
+    total_steps = STEPS_PER_P[p]
+    n_episodes = total_steps // episode_length
+    log_every = max(1, n_episodes // 20)
+
     env = make_env(p, seed=seed)
     agent = DQNAgent(state_dim=env.state_dim, action_dim=env.action_dim,
                      seed=seed)
@@ -188,9 +197,12 @@ def train_dqn(p, seed, n_episodes=N_EPISODES, episode_length=EPISODE_LENGTH,
             state = next_state
             ep_reward += reward
         ep_avg.append(ep_reward / episode_length)
-        if verbose and (ep + 1) % 20 == 0:
-            recent = np.mean(ep_avg[-20:])
-            print(f"  ep {ep+1:4d}  avg per-step reward (last 20): {recent:+.3f}")
+
+        if verbose and (ep + 1) % log_every == 0:
+            recent = np.mean(ep_avg[-log_every:])
+            pct = 100 * (ep + 1) / n_episodes
+            print(f"  ep {ep+1:5d}/{n_episodes} ({pct:4.0f}%)  "
+                  f"avg per-step reward (last {log_every}): {recent:+.3f}")
     return agent
 
 # Main --------------------------------------------------------------- #
@@ -206,9 +218,8 @@ def main():
         # DQN ---
         dqn_returns = []
         for seed in SEEDS:
-            print(f"  seed {seed}: training DQN "
-                  f"({N_EPISODES} episodes x {EPISODE_LENGTH} steps = "
-                  f"{N_EPISODES * EPISODE_LENGTH:,} steps)...")
+            total_steps = STEPS_PER_P[p]
+            print(f"  seed {seed}: training DQN ({total_steps:,} steps)...")
             agent = train_dqn(p, seed)
             r = eval_dqn(agent, p, seed_offset=10_000 + 1000 * seed)
             print(f"      eval discounted return: {r.mean():+.3f} ± {r.std():.3f}")
