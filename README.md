@@ -24,7 +24,7 @@ flowchart LR
     Bad -->|P01| Good
     Good -->|P11| Good
 ```
-*Per-channel marginal view.* Each channel is good or bad at each time slot. In the round-robin case these are **not** independent: the system has exactly one good channel, which holds its position with probability $(1−p)$ or advances by one slot with probability $p$. The two-state diagram above describes how an individual channel's marginal state evolves, not the joint dynamics.
+*Per-channel marginal view.* Each channel is good or bad at each time slot. In the round-robin case these are **not** independent: the system has exactly one good channel, which holds its position with probability $(1-p)$ or advances by one slot with probability $p$. The two-state diagram above describes how an individual channel's marginal state evolves, not the joint dynamics.
 
 At each time step the agent picks exactly one channel, observes only whether *that* channel was good or bad, and gets $+1$ (success i.e picked good channel) or $-1$ (transmission failure i.e picked a bad channel). It never observes the other $N-1$ channels and never has access to the transition probabilities. That makes this a POMDP as the true joint state is never fully observed.
 
@@ -56,7 +56,7 @@ The DQN's input state is the past M=N per-slot observation vectors concatenated 
 
 Four non-obvious issues surfaced during replication and materially affect the Fig. 4 numbers. They are recorded here because they would not be obvious from a casual read of the paper.
 
-1. **Discounted return's effective horizon.** With $\gamma$=0.9, the sum of $\gamma^t$ over $t=0..29$ is $9.58$ out of the $\sim 10$ effective horizon which is approximately $95\\%$ of the discounted return comes from the first $30$ steps of a trajectory. Naive per-episode evaluation therefore measures cold-start transient rather than steady-state policy quality. We run `BURN_IN=200` steps unscored before accumulating discounted reward over `SCORE_STEPS=1000`.
+1. **Discounted return's effective horizon.** With $\gamma$=0.9, the sum of $\gamma^t$ over $t=0..29$ is $9.58$ out of the $\sim 10$ effective horizon which is approximately $95$% of the discounted return comes from the first $30$ steps of a trajectory. Naive per-episode evaluation therefore measures cold-start transient rather than steady-state policy quality. We run `BURN_IN=200` steps unscored before accumulating discounted reward over `SCORE_STEPS=1000`.
 
 2. **Genie initialization for Theorem 1.** The optimal policy requires knowing the initial active channel ([Section VI](https://arxiv.org/pdf/1802.06958)). An earlier version of the evaluation initialized the policy to a fixed channel regardless of the environment's true initial state, which broke the policy's invariant. After its first bad observation, the policy would stay on a channel that was not the true good one. The final evaluation syncs the policy to the environment's true initial channel, matching *Theorem 1*'s stated assumption.
 
@@ -98,7 +98,7 @@ DQN tracks the shape of the Optimal policy across $p$, but does not fully close 
 | 0.90 | $+8.039 \pm 1.279$ | $+8.735 \pm 0.867$ | $-8.941 \pm 1.027$ | $-8.701 \pm 0.977$ |
 | 0.95 | $+9.111 \pm 0.845$ | $+9.168 \pm 0.711$ | $-9.078 \pm 0.892$ | $-8.304 \pm 0.980$ |
 
-At the completed $p$ values, DQN reaches $85\\%$ of Optimal's discounted return at $p=0.75$, rising to $99.37\\%$ at $p=0.95$. The gap narrows as $p$ increases. The paper reports that DQN achieves the same optimal performance as the optimal policy across all $p$, the residual gap in this replication is its central discrepancy.
+At the completed $p$ values, DQN reaches $85$% of Optimal's discounted return at $p=0.75$, rising to $99.37$% at $p=0.95$. The gap narrows as $p$ increases. The paper reports that DQN achieves the same optimal performance as the optimal policy across all $p$, the residual gap in this replication is its central discrepancy.
 
 #### Diagnosis: convergence and policy extraction.
 
@@ -106,7 +106,7 @@ At the completed $p$ values, DQN reaches $85\\%$ of Optimal's discounted return 
 
 ![](results/figures/convergence_check_p0.75_2000000_0.png)
 
-At $p=0.75$, DQN converges to within $\sim 2\\%$ of the optimal policy's reward (dashed line, +0.487 per step) only after roughly $2M$ steps. Earlier checkpoints in the same run show the policy still improving well past the 200k step count used in the initial Fig. 4 sweep which confirms that the initial gap was under-training, not a policy failure.
+At $p=0.75$, DQN converges to within $\sim 2$% of the optimal policy's reward (dashed line, +0.487 per step) only after roughly $2M$ steps. Earlier checkpoints in the same run show the policy still improving well past the 200k step count used in the initial Fig. 4 sweep which confirms that the initial gap was under-training, not a policy failure.
 
 **Policy Extraction**
 
@@ -121,7 +121,7 @@ At $p=0.75$, DQN converges to within $\sim 2\\%$ of the optimal policy's reward 
 |Failures that were policy errors|	$0.009$	|$0.000$|
 |Overall failure rate|	$0.239$	|$0.25$|
 
-The learned policy reproduces Algorithm 1 exactly at the level of its action rule. It advances after every successful transmission and stays after every failed one (with a $0.9\\%$ residual error rate consistent with the tail of the Q-function's resolution at low $p$). The overall failure rate ($23.9\\%$) matches the theoretical $25\\%$ to within sampling error.
+The learned policy reproduces Algorithm 1 exactly at the level of its action rule. It advances after every successful transmission and stays after every failed one (with a $0.9$% residual error rate consistent with the tail of the Q-function's resolution at low $p$). The overall failure rate ($23.9$%) matches the theoretical $25$% to within sampling error.
 
 #### Attempt 3: per-<span>$p$</span> training schedule 
 Re-running the sweep with the per-<span>$p$</span> schedule from `Methodology note 4` produces the paper-like result below.
@@ -136,7 +136,7 @@ Re-running the sweep with the per-<span>$p$</span> schedule from `Methodology no
 | 0.90 | $+7.848 \pm 0.971$ | $+8.735 \pm 0.867$| $-8.941 \pm 1.027$ | $-8.701 \pm 0.977$ |
 | 0.95 | $+9.214 \pm 0.670$ | $+9.168 \pm 0.711$ | $-9.078 \pm 0.892$ | $-8.304 \pm 0.980$ |
 
-DQN matches the optimal policy within statistical noise at both endpoints ($p=0.75$: gap $0.385$, $p=0.95$: DQN nominally *above* optimal by $0.046$, again within noise). A small residual gap of $\sim 0.9$ return units ($10-12\\%$) remains at mid $p$ ($0.80–0.90$, $\approx 2–3 \sigma$) and is the largest remaining quantitative deviation from the paper's claim that DQN matches optimal at every $p$. The convergence diagnostic and policy extraction above both attribute this to finite training rather than a policy failure.
+DQN matches the optimal policy within statistical noise at both endpoints ($p=0.75$: gap $0.385$, $p=0.95$: DQN nominally *above* optimal by $0.046$, again within noise). A small residual gap of $\sim 0.9$ return units ($10-12$%) remains at mid $p$ ($0.80–0.90$, $\approx 2–3 \sigma$) and is the largest remaining quantitative deviation from the paper's claim that DQN matches optimal at every $p$. The convergence diagnostic and policy extraction above both attribute this to finite training rather than a policy failure.
 
 Whittle Index sits close to Random across all $p$, and both sit far below DQN and Optimal. This is consistent with the paper's discussion of why an independent-channel heuristic cannot exploit the round-robin correlation.
 
