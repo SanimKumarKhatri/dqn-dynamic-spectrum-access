@@ -62,7 +62,7 @@ Four non-obvious issues surfaced during replication and materially affect the Fi
 
 3. **Equal evaluation protocol across policies.** DQN is averaged over $3$ training seeds $\times 10$ eval trajectories ($30$ samples); Optimal, Whittle, and Random are each averaged over $10$ eval trajectories. Earlier the DQN was reported with error bars but baselines were reported as single samples which produced misleading "DQN beats Optimal" readings.
 
-4. **Per-p training schedule.** The paper does not report how long the DQN was trained. Our first sweep used $200k$ steps per $p$ and plateaued at $\sim 85\\%$ of the optimal policy's reward at low $p$. A per-p convergence diagnostic (`experiments/check_convergence.py`) showed the DQN needs roughly an order of magnitude more training at low $p$ to converge: $~2M$ steps at $p=0.75$, $~500k–1.5M$ at mid $p$, and ~500k at $p \geq 0.90$. The schedule used for the final Fig. 4 sweep is:
+4. **Per-<span>$p$</span> training schedule.** The paper does not report how long the DQN was trained. Our first sweep used $200k$ steps per $p$ and plateaued at $\sim 85\\%$ of the optimal policy's reward at low $p$. A per-p convergence diagnostic (`experiments/check_convergence.py`) showed the DQN needs roughly an order of magnitude more training at low $p$ to converge: $~2M$ steps at $p=0.75$, $~500k–1.5M$ at mid $p$, and ~500k at $p \geq 0.90$. The schedule used for the final Fig. 4 sweep is:
 
 |$p$|training steps|
 |---|---|
@@ -123,8 +123,8 @@ At $p=0.75$, DQN converges to within $\sim 2\\%$ of the optimal policy's reward 
 
 The learned policy reproduces Algorithm 1 exactly at the level of its action rule. It advances after every successful transmission and stays after every failed one (with a $0.9\\%$ residual error rate consistent with the tail of the Q-function's resolution at low $p$). The overall failure rate ($23.9\\%$) matches the theoretical $25\\%$ to within sampling error.
 
-#### Attempt 3: per-$p$ training schedule 
-Re-running the sweep with the per-$p$ schedule from `Methodology note 4` produces the paper-like result below.
+#### Attempt 3: per-<span>$p$</span> training schedule 
+Re-running the sweep with the per-<span>$p$</span> schedule from `Methodology note 4` produces the paper-like result below.
 
 ![third_run](results/figures/exp1_round_robin_3.png)
 
